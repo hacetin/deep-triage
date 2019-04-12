@@ -1,5 +1,4 @@
 # The entire implementation is done using Python. The complete script to reproduce the results from the entire paper can be downloaded from here.
-
 # Let us walk through the implementation of our approach. The required packages for our implementation are:
 
 # Stanford NLTK
