@@ -44,7 +44,7 @@ for item in data:
     current_title_filter = [word.strip(string.punctuation) for word in current_title_tokens]      
     #8. Join the lists
     current_data = current_title_filter + current_desc_filter
-    current_data = list(filter(None, current_data))
+    current_data = [x for x in current_data if x]#list(filter(None, current_data))
     all_data.append(current_data)  
 # A vocabulary is constructed and the word2vec model is learnt using the preprocessed data. The word2vec model provides a semantic word representation for every word in the vocabulary.
 
@@ -81,7 +81,7 @@ for item in data:
     current_title_filter = [word.strip(string.punctuation) for word in current_title_tokens]       
     #8. Join the lists
     current_data = current_title_filter + current_desc_filter
-    current_data = filter(None, current_data)
+    current_data = [x for x in current_data if x]#filter(None, current_data)
     all_data.append(current_data)
     all_owner.append(item['owner'])
 

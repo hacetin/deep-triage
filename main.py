@@ -12,7 +12,8 @@ np.random.seed(1337)
 from gensim.models import Word2Vec
 from keras.preprocessing import sequence
 from keras.models import Model
-from keras.layers import Dense, Dropout, Embedding, LSTM, Input, merge, BatchNormalization
+from keras.layers import Dense, Dropout, Embedding, LSTM, BatchNormalization, Flatten, Input
+from keras.layers.merge import concatenate
 from keras.layers.wrappers import Wrapper
 from keras.optimizers import RMSprop, Adam
 from keras.callbacks import EarlyStopping
@@ -45,8 +46,8 @@ wordvec_model = Word2Vec.load("./data/chrome/word2vec.model")
 vocabulary = wordvec_model.wv.vocab
 vocab_size = len(vocabulary)
 
-all_data = np.load("./data/chrome/all_data.npy")
-all_owner = np.load("./data/chrome/all_owner.npy")
+all_data = np.load("./data/chrome/all_data.npy", allow_pickle=True)
+all_owner = np.load("./data/chrome/all_owner.npy", allow_pickle=True)
 
 # The ten times chronological cross validation split is performed as follows:
 
@@ -92,8 +93,8 @@ for i in range(1, numCV+1):
             updated_test_data.append(final_test_data[j])
             updated_test_owner.append(final_test_owner[j])
 
-    train_label = updated_train_owner
     unique_train_label = list(set(updated_train_owner))
+    train_label = unique_train_label
     classes = np.array(unique_train_label)
     # Create the data matrix and labels required for the deep learning model training and softmax classifier as follows:
 
@@ -131,29 +132,31 @@ for i in range(1, numCV+1):
     y_test = np_utils.to_categorical(Y_test, len(unique_train_label))
     # Construct the architecture for deep bidirectional RNN model using Keras library as follows:
 
-    input = Input(shape=(max_sentence_len,), dtype='int32')
-    sequence_embed = Embedding(vocab_size, embed_size_word2vec, input_length=max_sentence_len)(input)
+    input_1 = Input(shape=(max_sentence_len,embed_size_word2vec), dtype='float32')
+    # sequence_embed = Embedding(vocab_size, embed_size_word2vec, input_length=max_sentence_len)(input)
 
-    forwards_1 = LSTM(1024, return_sequences=True, dropout_U=0.2)(sequence_embed)
+    forwards_1 = LSTM(1024, return_sequences=True, dropout=0.2)(input_1)
     attention_1 = SoftAttentionConcat()(forwards_1)
-    after_dp_forward_5 = BatchNormalization()(attention_1)
+    after_dp_forward_5 = BatchNormalization()(forwards_1)
 
-    backwards_1 = LSTM(1024, return_sequences=True, dropout_U=0.2, go_backwards=True)(sequence_embed)
+    backwards_1 = LSTM(1024, return_sequences=True, dropout=0.2, go_backwards=True)(input_1)
     attention_2 = SoftAttentionConcat()(backwards_1)
-    after_dp_backward_5 = BatchNormalization()(attention_2)
+    after_dp_backward_5 = BatchNormalization()(backwards_1)
                 
-    merged = merge([after_dp_forward_5, after_dp_backward_5], mode='concat', concat_axis=-1)
-    after_merge = Dense(1000, activation='relu')(merged)
+    merged = concatenate([after_dp_forward_5, after_dp_backward_5])
+    flat = Flatten()(merged)
+    after_merge = Dense(1000, activation='relu')(flat)
     after_dp = Dropout(0.4)(after_merge)
     output = Dense(len(train_label), activation='softmax')(after_dp)                
-    model = Model(input=input, output=output)
+    model = Model(input=input_1, output=output)
     model.compile(loss='categorical_crossentropy', optimizer=Adam(lr=1e-4), metrics=['accuracy'])
 
+    model.summary()
     # Train the deep learning model and test using the classifier as follows:
 
-    early_stopping = EarlyStopping(monitor='val_loss', patience=2)
-    hist = model.fit(X_train, y_train, batch_size=batch_size, nb_epoch=200)              
-        
+    early_stopping = EarlyStopping(monitor='loss', patience=2)
+    hist = model.fit(X_train, y_train, batch_size=batch_size, nb_epoch=10, callbacks=[early_stopping])              
+    
     predict = model.predict(X_test)        
     accuracy = []
     sortedIndices = []
@@ -165,7 +168,7 @@ for i in range(1, numCV+1):
         trueNum = 0
         for sortedInd in sortedIndices:            
             pred_classes.append(classes[sortedInd[:k]])
-            if y_test[id] in classes[sortedInd[:k]]:
+            if np.argmax(y_test[id]) in sortedInd[:k]:
                 trueNum += 1
             id += 1
         accuracy.append((float(trueNum) / len(predict)) * 100)
