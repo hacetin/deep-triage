@@ -12,7 +12,7 @@ np.random.seed(1337)
 from gensim.models import Word2Vec
 from keras.preprocessing import sequence
 from keras.models import Model
-from keras.layers import Dense, Dropout, Embedding, LSTM, BatchNormalization, Flatten, Input
+from keras.layers import Dense, Dropout, Embedding, LSTM, BatchNormalization, Flatten, Input, RepeatVector, Permute, multiply, Lambda, Activation
 from keras.layers.merge import concatenate
 from keras.layers.wrappers import Wrapper
 from keras.optimizers import RMSprop, Adam
@@ -26,7 +26,6 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.multiclass import OneVsRestClassifier
 from sklearn.metrics.pairwise import cosine_similarity
 
-from soft_attention import SoftAttentionConcat
 
 #1. Word2vec parameters
 min_word_frequency_word2vec = 5
@@ -135,13 +134,30 @@ for i in range(1, numCV+1):
     input_1 = Input(shape=(max_sentence_len,embed_size_word2vec), dtype='float32')
     # sequence_embed = Embedding(vocab_size, embed_size_word2vec, input_length=max_sentence_len)(input)
 
-    forwards_1 = LSTM(1024, return_sequences=True, dropout=0.2)(input_1)
-    attention_1 = SoftAttentionConcat()(forwards_1)
-    after_dp_forward_5 = BatchNormalization()(forwards_1)
+    forwards_1 = LSTM(512, return_sequences=True, dropout=0.2)(input_1)
 
-    backwards_1 = LSTM(1024, return_sequences=True, dropout=0.2, go_backwards=True)(input_1)
-    attention_2 = SoftAttentionConcat()(backwards_1)
-    after_dp_backward_5 = BatchNormalization()(backwards_1)
+    attention_1 = Dense(1, activation='tanh')(forwards_1)
+    attention_1 = Flatten()(attention_1)
+    attention_1 = Activation('softmax')(attention_1)
+    attention_1 = RepeatVector(512)(attention_1)
+    attention_1 = Permute([2, 1])(attention_1)
+
+    sent_representation_1 = multiply([forwards_1, attention_1])
+
+
+    after_dp_forward_5 = BatchNormalization()(sent_representation_1)
+
+    backwards_1 = LSTM(512, return_sequences=True, dropout=0.2, go_backwards=True)(input_1)
+    
+    attention_2 = Dense(1, activation='tanh')(backwards_1)
+    attention_2 = Flatten()(attention_2)
+    attention_2 = Activation('softmax')(attention_2)
+    attention_2 = RepeatVector(512)(attention_2)
+    attention_2 = Permute([2, 1])(attention_2)
+
+    sent_representation_2 = multiply([backwards_1, attention_2])
+
+    after_dp_backward_5 = BatchNormalization()(sent_representation_2)
                 
     merged = concatenate([after_dp_forward_5, after_dp_backward_5])
     flat = Flatten()(merged)
@@ -155,7 +171,7 @@ for i in range(1, numCV+1):
     # Train the deep learning model and test using the classifier as follows:
 
     early_stopping = EarlyStopping(monitor='loss', patience=2)
-    hist = model.fit(X_train, y_train, batch_size=batch_size, nb_epoch=10, callbacks=[early_stopping])              
+    hist = model.fit(X_train, y_train, batch_size=batch_size, nb_epoch=50, callbacks=[early_stopping])              
     
     predict = model.predict(X_test)        
     accuracy = []
