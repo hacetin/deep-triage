@@ -26,6 +26,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.multiclass import OneVsRestClassifier
 from sklearn.metrics.pairwise import cosine_similarity
 
+from keras import backend as K
 
 #1. Word2vec parameters
 min_word_frequency_word2vec = 5
@@ -137,13 +138,15 @@ for i in range(1, numCV+1):
     forwards_1 = LSTM(512, return_sequences=True, dropout=0.2)(input_1)
 
     attention_1 = Dense(1, activation='tanh')(forwards_1)
-    attention_1 = Flatten()(attention_1)
+    attention_1 = Flatten()(attention_1) # squeeze (None,50,1)->(None,50)
     attention_1 = Activation('softmax')(attention_1)
     attention_1 = RepeatVector(512)(attention_1)
     attention_1 = Permute([2, 1])(attention_1)
-
-    sent_representation_1 = multiply([forwards_1, attention_1])
-
+    attention_1 = multiply([forwards_1, attention_1])
+    attention_1 = Lambda(lambda xin: K.sum(xin, axis=1), output_shape=(512,))(attention_1)
+    
+    last_out_1 = Lambda(lambda xin: xin[:,-1,:])(forwards_1)
+    sent_representation_1 = concatenate([last_out_1, attention_1])
 
     after_dp_forward_5 = BatchNormalization()(sent_representation_1)
 
@@ -154,14 +157,17 @@ for i in range(1, numCV+1):
     attention_2 = Activation('softmax')(attention_2)
     attention_2 = RepeatVector(512)(attention_2)
     attention_2 = Permute([2, 1])(attention_2)
+    attention_2 = multiply([backwards_1, attention_2])
+    attention_2 = Lambda(lambda xin: K.sum(xin, axis=1))(attention_2)
 
-    sent_representation_2 = multiply([backwards_1, attention_2])
+    last_out_2 = Lambda(lambda xin: xin[:,-1,:])(backwards_1)
+    sent_representation_2 = concatenate([last_out_2, attention_2])
 
     after_dp_backward_5 = BatchNormalization()(sent_representation_2)
                 
     merged = concatenate([after_dp_forward_5, after_dp_backward_5])
-    flat = Flatten()(merged)
-    after_merge = Dense(1000, activation='relu')(flat)
+    # flat = Flatten()(merged)
+    after_merge = Dense(1000, activation='relu')(merged)
     after_dp = Dropout(0.4)(after_merge)
     output = Dense(len(train_label), activation='softmax')(after_dp)                
     model = Model(input=input_1, output=output)
@@ -171,7 +177,7 @@ for i in range(1, numCV+1):
     # Train the deep learning model and test using the classifier as follows:
 
     early_stopping = EarlyStopping(monitor='loss', patience=2)
-    hist = model.fit(X_train, y_train, batch_size=batch_size, nb_epoch=50, callbacks=[early_stopping])              
+    hist = model.fit(X_train, y_train, batch_size=batch_size, nb_epoch=200, callbacks=[early_stopping])              
     
     predict = model.predict(X_test)        
     accuracy = []
