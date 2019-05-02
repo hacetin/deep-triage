@@ -9,6 +9,7 @@
 
 import numpy as np
 np.random.seed(1337)
+import logging
 from gensim.models import Word2Vec
 from keras.preprocessing import sequence
 from keras.models import Model
@@ -28,6 +29,9 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 from keras import backend as K
 
+# Logging configurations
+logging.basicConfig(filename="main.log", level=logging.INFO, filemode="a", format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
+
 #1. Word2vec parameters
 min_word_frequency_word2vec = 5
 embed_size_word2vec = 200
@@ -38,7 +42,7 @@ numCV = 10
 max_sentence_len = 50
 min_sentence_length = 15
 rankK = 10
-batch_size = 32
+batch_size = 2048
 
 # Load preprocessed data
 
@@ -57,6 +61,8 @@ totalLength = len(all_data)
 splitLength = totalLength // (numCV + 1)
 
 for i in range(1, numCV+1):
+    logging.info("Start of CV#{0}".format(i))
+
     train_data = all_data[:i*splitLength-1]
     test_data = all_data[i*splitLength:(i+1)*splitLength-1]
     train_owner = all_owner[:i*splitLength-1]
@@ -179,7 +185,7 @@ for i in range(1, numCV+1):
     # Train the deep learning model and test using the classifier as follows:
 
     early_stopping = EarlyStopping(monitor='loss', patience=2)
-    hist = model.fit(X_train, y_train, batch_size=batch_size, nb_epoch=200, callbacks=[early_stopping])              
+    hist = model.fit(X_train, y_train, batch_size=batch_size, epochs=2000, callbacks=[early_stopping])              
     
     predict = model.predict(X_test)        
     accuracy = []
@@ -196,10 +202,13 @@ for i in range(1, numCV+1):
                 trueNum += 1
             id += 1
         accuracy.append((float(trueNum) / len(predict)) * 100)
-    print('Test accuracy:', accuracy)    
+    print('Test accuracy:', accuracy)
+    logging.info('Test accuracy:')
+    logging.info(accuracy)
 
     train_result = hist.history        
     print(train_result)
+    logging.info(train_result)
 
 # To compare the deep learning based features, term frequency based bag-of-words model features are constructed as follows:
 
