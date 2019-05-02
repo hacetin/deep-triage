@@ -46,8 +46,10 @@ wordvec_model = Word2Vec.load("./data/chrome/word2vec.model")
 vocabulary = wordvec_model.wv.vocab
 vocab_size = len(vocabulary)
 
-all_data = np.load("./data/chrome/all_data.npy", allow_pickle=True)
-all_owner = np.load("./data/chrome/all_owner.npy", allow_pickle=True)
+min_train_samples_per_class = 0
+
+all_data = np.load("./data/chrome/all_data_{0}.npy".format(min_train_samples_per_class), allow_pickle=True)
+all_owner = np.load("./data/chrome/all_owner_{0}.npy".format(min_train_samples_per_class), allow_pickle=True)
 
 # The ten times chronological cross validation split is performed as follows:
 
@@ -194,7 +196,7 @@ for i in range(1, numCV+1):
                 trueNum += 1
             id += 1
         accuracy.append((float(trueNum) / len(predict)) * 100)
-    print('Test accuracy:', accuracy)       
+    print('Test accuracy:', accuracy)    
 
     train_result = hist.history        
     print(train_result)
