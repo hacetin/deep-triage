@@ -130,28 +130,28 @@ def chronological_cv(num_cv, sentences, labels, wordvec_model):
         yield X_train, y_train, X_test, y_test, classes
 
 
-def google_chromium_chronological_cv(min_train_samples_per_class=0, numCV=10):
+def google_chromium_chronological_cv(min_train_samples_per_class=0, num_cv=10):
     # Load preprocessed data
     wordvec_model, all_data, all_owner = load_data(
         "google_chromium", min_train_samples_per_class
     )
 
-    return chronological_cv(10, all_data, all_owner, wordvec_model)
+    return chronological_cv(num_cv, all_data, all_owner, wordvec_model)
 
 
-def mozilla_core_chronological_cv(min_train_samples_per_class=0, numCV=10):
+def mozilla_core_chronological_cv(min_train_samples_per_class=0, num_cv=10):
     # Load preprocessed data
     wordvec_model, all_data, all_owner = load_data(
         "mozilla_core", min_train_samples_per_class
     )
 
-    return chronological_cv(10, all_data, all_owner, wordvec_model)
+    return chronological_cv(num_cv, all_data, all_owner, wordvec_model)
 
 
-def mozilla_firefox_chronological_cv(min_train_samples_per_class=0, numCV=10):
+def mozilla_firefox_chronological_cv(min_train_samples_per_class=0, num_cv=10):
     # Load preprocessed data
     wordvec_model, all_data, all_owner = load_data(
         "mozilla_firefox", min_train_samples_per_class
     )
 
-    return chronological_cv(10, all_data, all_owner, wordvec_model)
+    return chronological_cv(num_cv, all_data, all_owner, wordvec_model)
