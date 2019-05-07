@@ -32,46 +32,53 @@ def clean_word_list(item):
 
     return current_data
 
-# The JSON file location containing the data for deep learning model training as follows:
-open_bugs_json = './data/chrome/deep_data.json'
+def preprocess_dataset(dataset_name):
+    print("Preprocessing {0} dataset: Start".format(dataset_name))
+    # The JSON file location containing the data for deep learning model training
+    open_bugs_json = './data/{0}/deep_data.json'.format(dataset_name)
 
-# Word2vec parameters
-min_word_frequency_word2vec = 5
-embed_size_word2vec = 200
-context_window_word2vec = 5
+    # Word2vec parameters
+    min_word_frequency_word2vec = 5
+    embed_size_word2vec = 200
+    context_window_word2vec = 5
 
-# The bugs are loaded from the JSON file and the preprocessing is performed as follows:
+    # The bugs are loaded from the JSON file and the preprocessing is performed
 
-with open(open_bugs_json) as data_file:
-    data = json.load(data_file, strict=False)
-
-all_data = []
-for item in data:
-    current_data =clean_word_list(item)
-    all_data.append(current_data)  
-
-# A vocabulary is constructed and the word2vec model is learnt using the preprocessed data. The word2vec model provides a semantic word representation for every word in the vocabulary.
-wordvec_model = Word2Vec(all_data, min_count=min_word_frequency_word2vec, size=embed_size_word2vec, window=context_window_word2vec)
-vocabulary = wordvec_model.wv.vocab
-vocab_size = len(vocabulary)
-
-# Save word2vec model to use in the model again and again
-wordvec_model.save("./data/chrome/word2vec.model")
-
-# The data used for training and testing the classifier is loaded and the preprocessing is performed as follows:
-for min_train_samples_per_class in [0,5,10,20]:
-    closed_bugs_json = './data/chrome/classifier_data_{0}.json'.format(min_train_samples_per_class)
-
-    with open(closed_bugs_json) as data_file:
+    with open(open_bugs_json) as data_file:
         data = json.load(data_file, strict=False)
 
     all_data = []
-    all_owner = []    
     for item in data:
-        current_data = clean_word_list(item)
-        all_data.append(current_data)
-        all_owner.append(item['owner'])
+        current_data =clean_word_list(item)
+        all_data.append(current_data)  
 
-    # Save all data arrays to use in the model again and again
-    np.save("./data/chrome/all_data_{0}.npy".format(min_train_samples_per_class), all_data)
-    np.save("./data/chrome/all_owner_{0}.npy".format(min_train_samples_per_class), all_owner)
+    print("Preprocessing {0} dataset: Word2Vec model".format(dataset_name))
+    # A vocabulary is constructed and the word2vec model is learnt using the preprocessed data. The word2vec model provides a semantic word representation for every word in the vocabulary.
+    wordvec_model = Word2Vec(all_data, min_count=min_word_frequency_word2vec, size=embed_size_word2vec, window=context_window_word2vec)
+
+    # Save word2vec model to use in the model again and again
+    wordvec_model.save("./data/{0}/word2vec.model".format(dataset_name))
+
+    # The data used for training and testing the classifier is loaded and the preprocessing is performed
+    for min_train_samples_per_class in [0,5,10,20]:
+        print("Preprocessing {0} dataset: Classifier data {1}".format(dataset_name, min_train_samples_per_class))
+        closed_bugs_json = './data/{0}/classifier_data_{1}.json'.format(dataset_name, min_train_samples_per_class)
+
+        with open(closed_bugs_json) as data_file:
+            data = json.load(data_file, strict=False)
+
+        all_data = []
+        all_owner = []    
+        for item in data:
+            current_data = clean_word_list(item)
+            all_data.append(current_data)
+            all_owner.append(item['owner'])
+
+        # Save all data arrays to use in the model again and again
+        np.save("./data/{0}/all_data_{1}.npy".format(dataset_name, min_train_samples_per_class), all_data)
+        np.save("./data/{0}/all_owner_{1}.npy".format(dataset_name, min_train_samples_per_class), all_owner)
+
+def preprocess_all_datasets():
+    preprocess_dataset("google_chromium")
+    preprocess_dataset("mozilla_core")
+    preprocess_dataset("mozilla_firefox")
