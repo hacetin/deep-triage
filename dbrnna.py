@@ -153,6 +153,27 @@ def train_dbrnna(
     return model
 
 
+def topk_accuracy(prediction, y_test, classes, rank_k=10):
+    accuracy = []
+    sortedIndices = []
+    pred_classes = []
+    for ll in prediction:
+        sortedIndices.append(
+            sorted(range(len(ll)), key=lambda ii: ll[ii], reverse=True)
+        )
+    for k in range(1, rank_k + 1):
+        id = 0
+        trueNum = 0
+        for sortedInd in sortedIndices:
+            pred_classes.append(classes[sortedInd[:k]])
+            if np.argmax(y_test[id]) in sortedInd[:k]:
+                trueNum += 1
+            id += 1
+        accuracy.append((float(trueNum) / len(prediction)) * 100)
+
+    return accuracy
+
+
 def run_dbrnna_chronological_cv(dataset_name, min_train_samples_per_class, num_cv):
     """ Chronological cross validation for DBRNN-A model
 
@@ -208,26 +229,35 @@ def run_dbrnna_chronological_cv(dataset_name, min_train_samples_per_class, num_c
             callbacks=[early_stopping],
         )
 
-        predict = model.predict(X_test)
-        accuracy = []
-        sortedIndices = []
-        pred_classes = []
-        for ll in predict:
-            sortedIndices.append(
-                sorted(range(len(ll)), key=lambda ii: ll[ii], reverse=True)
-            )
-        for k in range(1, rank_k + 1):
-            id = 0
-            trueNum = 0
-            for sortedInd in sortedIndices:
-                pred_classes.append(classes[sortedInd[:k]])
-                if np.argmax(y_test[id]) in sortedInd[:k]:
-                    trueNum += 1
-                id += 1
-            accuracy.append((float(trueNum) / len(predict)) * 100)
+        prediction = model.predict(X_test)
+        accuracy = topk_accuracy(prediction, y_test, classes, rank_k=10)
 
         train_result = hist.history
         train_result["test_topk_accuracies"] = accuracy
         slice_results[i] = train_result
 
     return slice_results
+
+
+def transfer_learning(train_dataset, test_dataset, min_train_samples_per_class):
+    dataset_names = ["google_chromium", "mozilla_core", "mozilla_firefox"]
+    if train_dataset not in dataset_names or test_dataset not in dataset_names:
+        print("Wrong dataset name")
+        return
+
+    gc_trained_model = train_dbrnna(
+        dataset_name=train_dataset, min_train_samples_per_class=20, save_model=True
+    )
+
+    X, y, classes = None, None, None
+    if test_dataset == "google_chromium":
+        X, y, classes = google_chromium_all_dataset(min_train_samples_per_class)
+    elif test_dataset == "mozilla_core":
+        X, y, classes = mozilla_core_all_dataset(min_train_samples_per_class)
+    elif test_dataset == "mozilla_firefox":
+        X, y, classes = mozilla_firefox_all_dataset(min_train_samples_per_class)
+
+    prediction = gc_trained_model.predict(X)
+    accuracy = topk_accuracy(prediction, y, classes)
+
+    return accuracy
