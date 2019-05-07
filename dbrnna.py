@@ -122,16 +122,18 @@ def run_dbrnna_chronological_cv(dataset_name, min_train_samples_per_class, num_c
         print("Wrong dataset name")
         return
 
-    for X_train, y_train, X_test, y_test, classes in slices:
+    slice_results = {}
+    for i, (X_train, y_train, X_test, y_test, classes) in enumerate(slices):
         model = dnrnna_model((max_sentence_len, embed_size_word2vec), len(classes))
 
         # Train the deep learning model and test using the classifier
-        early_stopping = EarlyStopping(monitor="loss", patience=2)
+        early_stopping = EarlyStopping(monitor="val_loss", patience=2)
         hist = model.fit(
             X_train,
             y_train,
+            validation_data=(X_test, y_test),
             batch_size=batch_size,
-            epochs=2000,
+            epochs=500,
             callbacks=[early_stopping],
         )
 
@@ -152,7 +154,9 @@ def run_dbrnna_chronological_cv(dataset_name, min_train_samples_per_class, num_c
                     trueNum += 1
                 id += 1
             accuracy.append((float(trueNum) / len(predict)) * 100)
-        print("Test accuracy:", accuracy)
 
         train_result = hist.history
-        print(train_result)
+        train_result["test_topk_accuracies"] = accuracy
+        slice_results[i] = train_result
+
+    return slice_results
