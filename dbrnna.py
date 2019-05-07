@@ -57,23 +57,31 @@ def dnrnna_model(input_shape, num_output, num_lstm_unit=512, num_dense_unit=1000
 
     return model
 
-def run_dbrnna_chronological_cv(dataset_name):
-    """ Available datasets: "google_chromium", "mozilla_core", "mozilla_firefox"
-        
+def run_dbrnna_chronological_cv(dataset_name, min_train_samples_per_class, num_cv):
+    """ Chronological cross validation for DBRNN-A model
+
         # Example
-            
         ```python
-            run_dbrnna_chronological_cv("google_chromium")
+            run_dbrnna_chronological_cv("google_chromium", 0, 10)
         ```
+        # Arguments
+        dataset_name: Available datasets  are "google_chromium", "mozilla_core", "mozilla_firefox"
+        min_train_samples_per_class: This is a dataet parameter, and needs to be one of 0, 5, 10 and 20
+        num_cv: Number of chronological cross validation
     """
-    # Dataset parameters
-    min_train_samples_per_class = 0
+    
+    if min_train_samples_per_class not in [0,5,10,20]:
+        print("Wrong min train samples per class")
+        return
+
+    if num_cv<2:
+        print("Wrong number of chronological cross validation (num_cv)")
+        return
 
     # Word2vec parameters
     embed_size_word2vec = 200
 
     # Classifier hyperparameters
-    num_cv = 10
     max_sentence_len = 50
     rank_k = 10
     batch_size = 2048
