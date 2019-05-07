@@ -44,8 +44,11 @@ def preprocess_dataset(dataset_name):
 
     # The bugs are loaded from the JSON file and the preprocessing is performed
 
-    with open(open_bugs_json) as data_file:
-        data = json.load(data_file, strict=False)
+    with open(open_bugs_json) as data_file:   
+        text = data_file.read()
+        # Fix json files for mozilla core and mozilla firefox 
+        text = text.replace('" : NULL', '" : "NULL"')
+        data = json.loads(text, strict=False)
 
     all_data = []
     for item in data:
