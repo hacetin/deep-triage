@@ -23,6 +23,9 @@ from dataset import (
     google_chromium_chronological_cv,
     mozilla_core_chronological_cv,
     mozilla_firefox_chronological_cv,
+    google_chromium_all_dataset,
+    mozilla_core_all_dataset,
+    mozilla_firefox_all_dataset,
 )
 
 np.random.seed(1337)
@@ -78,6 +81,74 @@ def dnrnna_model(input_shape, num_output, num_lstm_unit=512, num_dense_unit=1000
     )
 
     model.summary()
+
+    return model
+
+
+def train_dbrnna(
+    dataset_name, min_train_samples_per_class, save_model=True, dump_name=None
+):
+    """ Chronological cross validation for DBRNN-A model
+
+        # Example
+        ```python
+            train_dbrnna("google_chromium", 0)
+        ```
+        # Arguments
+        dataset_name: Available datasets  are "google_chromium", "mozilla_core", "mozilla_firefox"
+        min_train_samples_per_class: This is a dataet parameter, and needs to be one of 0, 5, 10 and 20
+        save_model: A boolean, whether save the trained model or not
+        dump_name: A file name to save the model 
+    """
+
+    if min_train_samples_per_class not in [0, 5, 10, 20]:
+        print("Wrong min train samples per class")
+        return
+
+    if save_model and not dump_name:
+        dump_name = "{0}_{1}_trained_model.hdf5".format(
+            dataset_name, min_train_samples_per_class
+        )
+
+    # Word2vec parameters
+    embed_size_word2vec = 200
+
+    # Classifier hyperparameters
+    max_sentence_len = 50
+    batch_size = 2048
+
+    X_train, y_train, classes = None, None, None
+    if dataset_name == "google_chromium":
+        X_train, y_train, classes = google_chromium_all_dataset(
+            min_train_samples_per_class
+        )
+    elif dataset_name == "mozilla_core":
+        X_train, y_train, classes = mozilla_core_all_dataset(
+            min_train_samples_per_class
+        )
+    elif dataset_name == "mozilla_firefox":
+        X_train, y_train, classes = mozilla_firefox_all_dataset(
+            min_train_samples_per_class
+        )
+    else:
+        print("Wrong dataset name")
+        return
+
+    model = dnrnna_model((max_sentence_len, embed_size_word2vec), len(classes))
+
+    # Train the deep learning model and test using the classifier
+    early_stopping = EarlyStopping(monitor="val_loss", patience=2)
+    hist = model.fit(
+        X_train,
+        y_train,
+        validation_split=0.1,
+        batch_size=batch_size,
+        epochs=500,
+        callbacks=[early_stopping],
+    )
+    print(hist.history)
+    if save_model:
+        model.save(dump_name)
 
     return model
 

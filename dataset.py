@@ -155,3 +155,53 @@ def mozilla_firefox_chronological_cv(min_train_samples_per_class=0, num_cv=10):
     )
 
     return chronological_cv(num_cv, all_data, all_owner, wordvec_model)
+
+
+def all_dataset(sentences, labels, wordvec_model):
+    # chronological cross validation split is performed
+    vocabulary = wordvec_model.wv.vocab
+
+    # Remove all the words that is not present in the vocabulary
+    updated_train_data, updated_train_owner = filter_with_vocabulary(
+        sentences, labels, vocabulary
+    )
+    # Create the data matrix and labels required for the deep learning model training and softmax classifier
+    unique_train_label = list(set(updated_train_owner))
+    classes = np.array(unique_train_label)
+    X_train, Y_train = embedding(
+        updated_train_data,
+        updated_train_owner,
+        unique_train_label,
+        wordvec_model,
+        vocabulary,
+    )
+
+    y_train = np_utils.to_categorical(Y_train, len(unique_train_label))
+
+    return X_train, y_train, classes
+
+
+def google_chromium_all_dataset(min_train_samples_per_class=0):
+    # Load preprocessed data
+    wordvec_model, all_data, all_owner = load_data(
+        "google_chromium", min_train_samples_per_class
+    )
+
+    return all_dataset(all_data, all_owner, wordvec_model)
+ 
+def mozilla_core_all_dataset(min_train_samples_per_class=0):
+    # Load preprocessed data
+    wordvec_model, all_data, all_owner = load_data(
+        "mozilla_core", min_train_samples_per_class
+    )
+
+    return all_dataset(all_data, all_owner, wordvec_model)
+
+
+def mozilla_firefox_all_dataset(min_train_samples_per_class=0):
+    # Load preprocessed data
+    wordvec_model, all_data, all_owner = load_data(
+        "mozilla_firefox", min_train_samples_per_class
+    )
+
+    return all_dataset(all_data, all_owner, wordvec_model)
