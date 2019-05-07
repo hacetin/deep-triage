@@ -44,7 +44,7 @@ def preprocess_dataset(dataset_name):
 
     # The bugs are loaded from the JSON file and the preprocessing is performed
 
-    with open(open_bugs_json) as data_file:   
+    with open(open_bugs_json) as data_file:
         text = data_file.read()
         # Fix json files for mozilla core and mozilla firefox 
         text = text.replace('" : NULL', '" : "NULL"')
@@ -68,7 +68,10 @@ def preprocess_dataset(dataset_name):
         closed_bugs_json = './data/{0}/classifier_data_{1}.json'.format(dataset_name, min_train_samples_per_class)
 
         with open(closed_bugs_json) as data_file:
-            data = json.load(data_file, strict=False)
+            text = data_file.read()
+            # Fix json files for mozilla core and mozilla firefox 
+            text = text.replace('" : NULL', '" : "NULL"')
+            data = json.loads(text, strict=False)
 
         all_data = []
         all_owner = []    
