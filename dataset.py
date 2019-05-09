@@ -49,6 +49,17 @@ def load_data(dataset_name, min_train_samples_per_class):
     return wordvec_model, all_data, all_owner
 
 
+def load_combined_wordvec_model(dataset_name1, dataset_name2):
+    sorted_dnames = sorted([dataset_name1, dataset_name2])
+    wordvec_model = Word2Vec.load(
+        "./data/combined/word2vec_{0}_{1}.model".format(
+            sorted_dnames[0], sorted_dnames[1]
+        )
+    )
+
+    return wordvec_model
+
+
 def embedding(
     sentences,
     labels,
@@ -157,51 +168,71 @@ def mozilla_firefox_chronological_cv(min_train_samples_per_class=0, num_cv=10):
     return chronological_cv(num_cv, all_data, all_owner, wordvec_model)
 
 
-def all_dataset(sentences, labels, wordvec_model):
+def transfer_learning_embedding(
+    train_data, train_owner, test_data, test_owner, wordvec_model
+):
     # chronological cross validation split is performed
     vocabulary = wordvec_model.wv.vocab
 
     # Remove all the words that is not present in the vocabulary
-    updated_sentences, updated_labels = filter_with_vocabulary(
-        sentences, labels, vocabulary
+    updated_train_data, updated_train_owner = filter_with_vocabulary(
+        train_data, train_owner, vocabulary
     )
+    final_test_data, final_test_owner = filter_with_vocabulary(
+        test_data, test_owner, vocabulary
+    )
+
+    # Remove those classes from the test set, for whom the train data is not available.
+    updated_test_data, updated_test_owner = filter_with_labels(
+        final_test_data, final_test_owner, updated_train_owner
+    )
+
     # Create the data matrix and labels required for the deep learning model training and softmax classifier
-    unique_labels = list(set(updated_labels))
-    classes = np.array(unique_labels)
-    X, Y = embedding(
-        updated_sentences,
-        updated_labels,
-        unique_labels,
+    unique_train_label = list(set(updated_train_owner))
+    classes = np.array(unique_train_label)
+    X_train, Y_train = embedding(
+        updated_train_data,
+        updated_train_owner,
+        unique_train_label,
+        wordvec_model,
+        vocabulary,
+    )
+    X_test, Y_test = embedding(
+        updated_test_data,
+        updated_test_owner,
+        unique_train_label,
         wordvec_model,
         vocabulary,
     )
 
-    y = np_utils.to_categorical(Y, len(unique_labels))
+    y_train = np_utils.to_categorical(Y_train, len(unique_train_label))
+    y_test = np_utils.to_categorical(Y_test, len(unique_train_label))
 
-    return X, y, classes
+    return X_train, y_train, X_test, y_test, classes
 
 
-def google_chromium_all_dataset(min_train_samples_per_class=0):
+def transfer_learning_data(
+    dataset_name_train, dataset_name_test, min_train_samples_per_class
+):
     # Load preprocessed data
-    wordvec_model, all_data, all_owner = load_data(
-        "google_chromium", min_train_samples_per_class
+    _, all_data_train, all_owner_train = load_data(
+        dataset_name_train, min_train_samples_per_class
     )
 
-    return all_dataset(all_data, all_owner, wordvec_model)
- 
-def mozilla_core_all_dataset(min_train_samples_per_class=0):
-    # Load preprocessed data
-    wordvec_model, all_data, all_owner = load_data(
-        "mozilla_core", min_train_samples_per_class
+    _, all_data_test, all_owner_test = load_data(
+        dataset_name_test, min_train_samples_per_class
     )
 
-    return all_dataset(all_data, all_owner, wordvec_model)
-
-
-def mozilla_firefox_all_dataset(min_train_samples_per_class=0):
-    # Load preprocessed data
-    wordvec_model, all_data, all_owner = load_data(
-        "mozilla_firefox", min_train_samples_per_class
+    # Load combined word2vec model
+    combined_wordvec_model = load_combined_wordvec_model(
+        dataset_name_train, dataset_name_test
     )
 
-    return all_dataset(all_data, all_owner, wordvec_model)
+    return transfer_learning_embedding(
+        all_data_train,
+        all_owner_train,
+        all_data_test,
+        all_owner_test,
+        combined_wordvec_model,
+    )
+

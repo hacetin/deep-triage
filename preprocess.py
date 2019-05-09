@@ -120,3 +120,61 @@ def preprocess_all_datasets():
     preprocess_dataset("google_chromium")
     preprocess_dataset("mozilla_core")
     preprocess_dataset("mozilla_firefox")
+
+
+def preprocess_datasets_combined(dataset_name1, dataset_name2):
+    print(
+        "Preprocessing {0} and {1} dataset: Start".format(dataset_name1, dataset_name2)
+    )
+    # The JSON file location containing the data for deep learning model training
+    open_bugs_json1 = "./data/{0}/deep_data.json".format(dataset_name1)
+    open_bugs_json2 = "./data/{0}/deep_data.json".format(dataset_name2)
+
+    # Word2vec parameters
+    min_word_frequency_word2vec = 5
+    embed_size_word2vec = 200
+    context_window_word2vec = 5
+
+    # The bugs are loaded from the JSON file and the preprocessing is performed
+
+    with open(open_bugs_json1) as data_file:
+        text = data_file.read()
+        # Fix json files for mozilla core and mozilla firefox
+        text = text.replace('" : NULL', '" : "NULL"')
+        data1 = json.loads(text, strict=False)
+
+    with open(open_bugs_json2) as data_file:
+        text = data_file.read()
+        # Fix json files for mozilla core and mozilla firefox
+        text = text.replace('" : NULL', '" : "NULL"')
+        data2 = json.loads(text, strict=False)
+
+    merged_data = data1 + data2
+    all_data = [clean_word_list(item) for item in merged_data]
+
+    print(
+        "Preprocessing {0} and {1} dataset: Word2Vec model".format(
+            dataset_name1, dataset_name2
+        )
+    )
+    # A vocabulary is constructed and the word2vec model is learnt using the preprocessed data. The word2vec model provides a semantic word representation for every word in the vocabulary.
+    wordvec_model = Word2Vec(
+        all_data,
+        min_count=min_word_frequency_word2vec,
+        size=embed_size_word2vec,
+        window=context_window_word2vec,
+    )
+
+    # Save word2vec model to use in the model again and again
+    sorted_dnames = sorted([dataset_name1, dataset_name2])
+    wordvec_model.save(
+        "./data/combined/word2vec_{0}_{1}.model".format(
+            sorted_dnames[0], sorted_dnames[1]
+        )
+    )
+
+
+def preprocess_all_datasets_combined():
+    preprocess_datasets_combined("google_chromium", "mozilla_core")
+    preprocess_datasets_combined("google_chromium", "mozilla_firefox")
+    preprocess_datasets_combined("mozilla_core", "mozilla_firefox")

@@ -23,9 +23,7 @@ from dataset import (
     google_chromium_chronological_cv,
     mozilla_core_chronological_cv,
     mozilla_firefox_chronological_cv,
-    google_chromium_all_dataset,
-    mozilla_core_all_dataset,
-    mozilla_firefox_all_dataset,
+    transfer_learning_data,
 )
 
 np.random.seed(1337)
@@ -85,30 +83,15 @@ def dnrnna_model(input_shape, num_output, num_lstm_unit=512, num_dense_unit=1000
     return model
 
 
-def train_dbrnna(
-    dataset_name, min_train_samples_per_class, save_model=True, dump_name=None
-):
-    """ Chronological cross validation for DBRNN-A model
+def train_dbrnna(X_train, y_train, classes, save_model=None):
+    """ Train DBRNN-A model with X_train and y_train
 
-        # Example
-        ```python
-            train_dbrnna("google_chromium", 0)
-        ```
         # Arguments
-        dataset_name: Available datasets  are "google_chromium", "mozilla_core", "mozilla_firefox"
-        min_train_samples_per_class: This is a dataet parameter, and needs to be one of 0, 5, 10 and 20
-        save_model: A boolean, whether save the trained model or not
-        dump_name: A file name to save the model 
+        X_train: Sentence embeddings
+        y_train: Labels
+        classes: Unique labels
+        save_model: A file name to save the model. If None, does not save.
     """
-
-    if min_train_samples_per_class not in [0, 5, 10, 20]:
-        print("Wrong min train samples per class")
-        return
-
-    if save_model and not dump_name:
-        dump_name = "{0}_{1}_trained_model.hdf5".format(
-            dataset_name, min_train_samples_per_class
-        )
 
     # Word2vec parameters
     embed_size_word2vec = 200
@@ -117,27 +100,10 @@ def train_dbrnna(
     max_sentence_len = 50
     batch_size = 2048
 
-    X_train, y_train, classes = None, None, None
-    if dataset_name == "google_chromium":
-        X_train, y_train, classes = google_chromium_all_dataset(
-            min_train_samples_per_class
-        )
-    elif dataset_name == "mozilla_core":
-        X_train, y_train, classes = mozilla_core_all_dataset(
-            min_train_samples_per_class
-        )
-    elif dataset_name == "mozilla_firefox":
-        X_train, y_train, classes = mozilla_firefox_all_dataset(
-            min_train_samples_per_class
-        )
-    else:
-        print("Wrong dataset name")
-        return
-
     model = dnrnna_model((max_sentence_len, embed_size_word2vec), len(classes))
 
     # Train the deep learning model and test using the classifier
-    early_stopping = EarlyStopping(monitor="val_loss", patience=2)
+    early_stopping = EarlyStopping(monitor="val_loss", patience=3)
     hist = model.fit(
         X_train,
         y_train,
@@ -148,6 +114,7 @@ def train_dbrnna(
     )
     print(hist.history)
     if save_model:
+        dump_name = "./model/{0}.hdf5".format(save_model)
         model.save(dump_name)
 
     return model
@@ -191,7 +158,7 @@ def run_dbrnna_chronological_cv(dataset_name, min_train_samples_per_class, num_c
         print("Wrong min train samples per class")
         return
 
-    if num_cv < 2:
+    if num_cv < 1:
         print("Wrong number of chronological cross validation (num_cv)")
         return
 
@@ -219,7 +186,7 @@ def run_dbrnna_chronological_cv(dataset_name, min_train_samples_per_class, num_c
         model = dnrnna_model((max_sentence_len, embed_size_word2vec), len(classes))
 
         # Train the deep learning model and test using the classifier
-        early_stopping = EarlyStopping(monitor="val_loss", patience=2)
+        early_stopping = EarlyStopping(monitor="val_loss", patience=3)
         hist = model.fit(
             X_train,
             y_train,
@@ -230,11 +197,12 @@ def run_dbrnna_chronological_cv(dataset_name, min_train_samples_per_class, num_c
         )
 
         prediction = model.predict(X_test)
-        accuracy = topk_accuracy(prediction, y_test, classes, rank_k=10)
+        accuracy = topk_accuracy(prediction, y_test, classes, rank_k=rank_k)
+        print("CV{}, top1 - ... - top{} accuracy: ".format(i + 1, rank_k), accuracy)
 
         train_result = hist.history
         train_result["test_topk_accuracies"] = accuracy
-        slice_results[i] = train_result
+        slice_results[i + 1] = train_result
 
     return slice_results
 
@@ -245,19 +213,15 @@ def transfer_learning(train_dataset, test_dataset, min_train_samples_per_class):
         print("Wrong dataset name")
         return
 
-    gc_trained_model = train_dbrnna(
-        dataset_name=train_dataset, min_train_samples_per_class=20, save_model=True
+    X_train, y_train, X_test, y_test, classes = transfer_learning_data(
+        train_dataset, test_dataset, min_train_samples_per_class
     )
 
-    X, y, classes = None, None, None
-    if test_dataset == "google_chromium":
-        X, y, classes = google_chromium_all_dataset(min_train_samples_per_class)
-    elif test_dataset == "mozilla_core":
-        X, y, classes = mozilla_core_all_dataset(min_train_samples_per_class)
-    elif test_dataset == "mozilla_firefox":
-        X, y, classes = mozilla_firefox_all_dataset(min_train_samples_per_class)
+    trained_model = train_dbrnna(
+        X_train, y_train, classes, save_model="{0}".format(train_dataset)
+    )
 
-    prediction = gc_trained_model.predict(X)
-    accuracy = topk_accuracy(prediction, y, classes)
+    prediction = trained_model.predict(X_test)
+    accuracy = topk_accuracy(prediction, y_test, classes)
 
     return accuracy
