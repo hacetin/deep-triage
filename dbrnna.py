@@ -83,43 +83,6 @@ def dnrnna_model(input_shape, num_output, num_lstm_unit=512, num_dense_unit=1000
     return model
 
 
-def train_dbrnna(X_train, y_train, classes, save_model=None):
-    """ Train DBRNN-A model with X_train and y_train
-
-        # Arguments
-        X_train: Sentence embeddings
-        y_train: Labels
-        classes: Unique labels
-        save_model: A file name to save the model. If None, does not save.
-    """
-
-    # Word2vec parameters
-    embed_size_word2vec = 200
-
-    # Classifier hyperparameters
-    max_sentence_len = 50
-    batch_size = 2048
-
-    model = dnrnna_model((max_sentence_len, embed_size_word2vec), len(classes))
-
-    # Train the deep learning model and test using the classifier
-    early_stopping = EarlyStopping(monitor="val_loss", patience=3)
-    hist = model.fit(
-        X_train,
-        y_train,
-        validation_split=0.1,
-        batch_size=batch_size,
-        epochs=500,
-        callbacks=[early_stopping],
-    )
-    print(hist.history)
-    if save_model:
-        dump_name = "./model/{0}.hdf5".format(save_model)
-        model.save(dump_name)
-
-    return model
-
-
 def topk_accuracy(prediction, y_test, classes, rank_k=10):
     accuracy = []
     sortedIndices = []
@@ -205,23 +168,3 @@ def run_dbrnna_chronological_cv(dataset_name, min_train_samples_per_class, num_c
         slice_results[i + 1] = train_result
 
     return slice_results
-
-
-def transfer_learning(train_dataset, test_dataset, min_train_samples_per_class):
-    dataset_names = ["google_chromium", "mozilla_core", "mozilla_firefox"]
-    if train_dataset not in dataset_names or test_dataset not in dataset_names:
-        print("Wrong dataset name")
-        return
-
-    X_train, y_train, X_test, y_test, classes = transfer_learning_data(
-        train_dataset, test_dataset, min_train_samples_per_class
-    )
-
-    trained_model = train_dbrnna(
-        X_train, y_train, classes, save_model="{0}".format(train_dataset)
-    )
-
-    prediction = trained_model.predict(X_test)
-    accuracy = topk_accuracy(prediction, y_test, classes)
-
-    return accuracy
