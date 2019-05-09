@@ -1,4 +1,4 @@
-from dbrnna import run_dbrnna_chronological_cv, transfer_learning
+from dbrnna import run_dbrnna_chronological_cv
 from preprocess import preprocess_all_datasets
 
 

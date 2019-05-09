@@ -49,17 +49,6 @@ def load_data(dataset_name, min_train_samples_per_class):
     return wordvec_model, all_data, all_owner
 
 
-def load_combined_wordvec_model(dataset_name1, dataset_name2):
-    sorted_dnames = sorted([dataset_name1, dataset_name2])
-    wordvec_model = Word2Vec.load(
-        "./data/combined/word2vec_{0}_{1}.model".format(
-            sorted_dnames[0], sorted_dnames[1]
-        )
-    )
-
-    return wordvec_model
-
-
 def embedding(
     sentences,
     labels,
@@ -91,7 +80,12 @@ def embedding(
     return X, Y
 
 
-def chronological_cv(num_cv, sentences, labels, wordvec_model):
+def chronological_cv(dataset_name, min_train_samples_per_class, num_cv):
+    # Load preprocessed data
+    wordvec_model, sentences, labels = load_data(
+        dataset_name, min_train_samples_per_class
+    )
+
     # chronological cross validation split is performed
     vocabulary = wordvec_model.wv.vocab
     splitLength = len(sentences) // (num_cv + 1)
@@ -139,30 +133,3 @@ def chronological_cv(num_cv, sentences, labels, wordvec_model):
         y_test = np_utils.to_categorical(Y_test, len(unique_train_label))
 
         yield X_train, y_train, X_test, y_test, classes
-
-
-def google_chromium_chronological_cv(min_train_samples_per_class=0, num_cv=10):
-    # Load preprocessed data
-    wordvec_model, all_data, all_owner = load_data(
-        "google_chromium", min_train_samples_per_class
-    )
-
-    return chronological_cv(num_cv, all_data, all_owner, wordvec_model)
-
-
-def mozilla_core_chronological_cv(min_train_samples_per_class=0, num_cv=10):
-    # Load preprocessed data
-    wordvec_model, all_data, all_owner = load_data(
-        "mozilla_core", min_train_samples_per_class
-    )
-
-    return chronological_cv(num_cv, all_data, all_owner, wordvec_model)
-
-
-def mozilla_firefox_chronological_cv(min_train_samples_per_class=0, num_cv=10):
-    # Load preprocessed data
-    wordvec_model, all_data, all_owner = load_data(
-        "mozilla_firefox", min_train_samples_per_class
-    )
-
-    return chronological_cv(num_cv, all_data, all_owner, wordvec_model)

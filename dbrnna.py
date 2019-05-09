@@ -19,12 +19,7 @@ from keras.layers.merge import concatenate
 from keras.optimizers import Adam
 from keras.callbacks import EarlyStopping
 from keras import backend as K
-from dataset import (
-    google_chromium_chronological_cv,
-    mozilla_core_chronological_cv,
-    mozilla_firefox_chronological_cv,
-    transfer_learning_data,
-)
+from dataset import chronological_cv
 
 np.random.seed(1337)
 
@@ -125,6 +120,10 @@ def run_dbrnna_chronological_cv(dataset_name, min_train_samples_per_class, num_c
         print("Wrong number of chronological cross validation (num_cv)")
         return
 
+    if dataset_name not in ["google_chromium", "mozilla_core", "mozilla_firefox"]:
+        print("Wrong dataset name")
+        return
+
     # Word2vec parameters
     embed_size_word2vec = 200
 
@@ -133,16 +132,7 @@ def run_dbrnna_chronological_cv(dataset_name, min_train_samples_per_class, num_c
     rank_k = 10
     batch_size = 2048
 
-    slices = None
-    if dataset_name == "google_chromium":
-        slices = google_chromium_chronological_cv(min_train_samples_per_class, num_cv)
-    elif dataset_name == "mozilla_core":
-        slices = mozilla_core_chronological_cv(min_train_samples_per_class, num_cv)
-    elif dataset_name == "mozilla_firefox":
-        slices = mozilla_firefox_chronological_cv(min_train_samples_per_class, num_cv)
-    else:
-        print("Wrong dataset name")
-        return
+    slices = chronological_cv(dataset_name, min_train_samples_per_class, num_cv)
 
     slice_results = {}
     for i, (X_train, y_train, X_test, y_test, classes) in enumerate(slices):
