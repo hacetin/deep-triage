@@ -6,6 +6,7 @@ from keras.layers import (
     Dropout,
     Embedding,
     LSTM,
+    GRU,
     BatchNormalization,
     Flatten,
     Input,
@@ -24,17 +25,34 @@ from dataset import chronological_cv
 np.random.seed(1337)
 
 
-def dnrnna_model(input_shape, num_output, num_lstm_unit=512, num_dense_unit=1000):
-    """Construct the architecture for deep bidirectional RNN model using Keras library"""
+def dnrnna_model(input_shape, num_output, num_rnn_unit=512, num_dense_unit=1000, rnn_type="gru"):
+    """ Deep bidirectional RNN model using Keras library
+        
+        # Example
+        ```python
+            dnrnna_model((50, 200), 1061)
+        ```
+        # Arguments
+        input_shape: Tuple for model input as (max_sentence_len, embed_size_word2vec)
+        num_output: Number of unique labels in the data
+        num_rnn_unit: Number of rnn units
+        num_dense_unit: Number of dense layer units
+        rnn_type: One of "lstm" and "gru"
+    """
+    if rnn_type not in ["lstm", "gru"]:
+        print("Wrong RNN type.")
+        return
 
     input_1 = Input(shape=input_shape, dtype="float32")
 
-    forwards_1 = LSTM(num_lstm_unit, return_sequences=True, dropout=0.2)(input_1)
-
+    if rnn_type == "lstm":
+        forwards_1 = LSTM(num_rnn_unit, return_sequences=True, dropout=0.2)(input_1)
+    else:
+        forwards_1 = GRU(num_rnn_unit, return_sequences=True, dropout=0.2)(input_1)
     attention_1 = Dense(1, activation="tanh")(forwards_1)
     attention_1 = Flatten()(attention_1)  # squeeze (None,50,1)->(None,50)
     attention_1 = Activation("softmax")(attention_1)
-    attention_1 = RepeatVector(num_lstm_unit)(attention_1)
+    attention_1 = RepeatVector(num_rnn_unit)(attention_1)
     attention_1 = Permute([2, 1])(attention_1)
     attention_1 = multiply([forwards_1, attention_1])
     attention_1 = Lambda(lambda xin: K.sum(xin, axis=1), output_shape=(512,))(
@@ -45,15 +63,19 @@ def dnrnna_model(input_shape, num_output, num_lstm_unit=512, num_dense_unit=1000
     sent_representation_1 = concatenate([last_out_1, attention_1])
 
     after_dp_forward_5 = BatchNormalization()(sent_representation_1)
-
-    backwards_1 = LSTM(
-        num_lstm_unit, return_sequences=True, dropout=0.2, go_backwards=True
-    )(input_1)
+    if rnn_type == "lstm":
+        backwards_1 = LSTM(
+            num_rnn_unit, return_sequences=True, dropout=0.2, go_backwards=True
+        )(input_1)
+    else:
+        backwards_1 = GRU(
+            num_rnn_unit, return_sequences=True, dropout=0.2, go_backwards=True
+        )(input_1)
 
     attention_2 = Dense(1, activation="tanh")(backwards_1)
     attention_2 = Flatten()(attention_2)
     attention_2 = Activation("softmax")(attention_2)
-    attention_2 = RepeatVector(num_lstm_unit)(attention_2)
+    attention_2 = RepeatVector(num_rnn_unit)(attention_2)
     attention_2 = Permute([2, 1])(attention_2)
     attention_2 = multiply([backwards_1, attention_2])
     attention_2 = Lambda(lambda xin: K.sum(xin, axis=1))(attention_2)
@@ -99,7 +121,7 @@ def topk_accuracy(prediction, y_test, classes, rank_k=10):
     return accuracy
 
 
-def run_dbrnna_chronological_cv(dataset_name, min_train_samples_per_class, num_cv):
+def run_dbrnna_chronological_cv(dataset_name, min_train_samples_per_class, num_cv, rnn_type="lstm"):
     """ Chronological cross validation for DBRNN-A model
 
         # Example
@@ -110,6 +132,7 @@ def run_dbrnna_chronological_cv(dataset_name, min_train_samples_per_class, num_c
         dataset_name: Available datasets  are "google_chromium", "mozilla_core", "mozilla_firefox"
         min_train_samples_per_class: This is a dataet parameter, and needs to be one of 0, 5, 10 and 20
         num_cv: Number of chronological cross validation
+        rnn_type: RNN model to use in keras model, one of "lstm" and "gru"
     """
 
     if min_train_samples_per_class not in [0, 5, 10, 20]:
@@ -131,12 +154,14 @@ def run_dbrnna_chronological_cv(dataset_name, min_train_samples_per_class, num_c
     max_sentence_len = 50
     rank_k = 10
     batch_size = 2048
+    if rnn_type == "gru":
+        batch_size = int(batch_size*1.5) 
 
     slices = chronological_cv(dataset_name, min_train_samples_per_class, num_cv)
 
     slice_results = {}
     for i, (X_train, y_train, X_test, y_test, classes) in enumerate(slices):
-        model = dnrnna_model((max_sentence_len, embed_size_word2vec), len(classes))
+        model = dnrnna_model((max_sentence_len, embed_size_word2vec), len(classes), rnn_type=rnn_type)
 
         # Train the deep learning model and test using the classifier
         early_stopping = EarlyStopping(monitor="val_loss", patience=3)
