@@ -25,7 +25,9 @@ from dataset import chronological_cv
 np.random.seed(1337)
 
 
-def dnrnna_model(input_shape, num_output, num_rnn_unit=512, num_dense_unit=1000, rnn_type="gru"):
+def dnrnna_model(
+    input_shape, num_output, num_rnn_unit=512, num_dense_unit=1000, rnn_type="gru"
+):
     """ Deep bidirectional RNN model using Keras library
         
         # Example
@@ -86,7 +88,6 @@ def dnrnna_model(input_shape, num_output, num_rnn_unit=512, num_dense_unit=1000,
     after_dp_backward_5 = BatchNormalization()(sent_representation_2)
 
     merged = concatenate([after_dp_forward_5, after_dp_backward_5])
-    # flat = Flatten()(merged)
     after_merge = Dense(num_dense_unit, activation="relu")(merged)
     after_dp = Dropout(0.4)(after_merge)
     output = Dense(num_output, activation="softmax")(after_dp)
@@ -95,7 +96,7 @@ def dnrnna_model(input_shape, num_output, num_rnn_unit=512, num_dense_unit=1000,
         loss="categorical_crossentropy", optimizer=Adam(lr=1e-4), metrics=["accuracy"]
     )
 
-    model.summary()
+    # model.summary()
 
     return model
 
@@ -121,7 +122,13 @@ def topk_accuracy(prediction, y_test, classes, rank_k=10):
     return accuracy
 
 
-def run_dbrnna_chronological_cv(dataset_name, min_train_samples_per_class, num_cv, rnn_type="lstm"):
+def run_dbrnna_chronological_cv(
+    dataset_name,
+    min_train_samples_per_class,
+    num_cv,
+    rnn_type="lstm",
+    merged_wordvec_model=False,
+):
     """ Chronological cross validation for DBRNN-A model
 
         # Example
@@ -133,6 +140,7 @@ def run_dbrnna_chronological_cv(dataset_name, min_train_samples_per_class, num_c
         min_train_samples_per_class: This is a dataet parameter, and needs to be one of 0, 5, 10 and 20
         num_cv: Number of chronological cross validation
         rnn_type: RNN model to use in keras model, one of "lstm" and "gru"
+        merged_wordvec_model: If `True`, use open bugs from all datasets 
     """
 
     if min_train_samples_per_class not in [0, 5, 10, 20]:
@@ -155,13 +163,18 @@ def run_dbrnna_chronological_cv(dataset_name, min_train_samples_per_class, num_c
     rank_k = 10
     batch_size = 2048
     if rnn_type == "gru":
-        batch_size = int(batch_size*1.5) 
+        batch_size = int(batch_size * 1.5)
 
-    slices = chronological_cv(dataset_name, min_train_samples_per_class, num_cv)
+    slices = chronological_cv(
+        dataset_name, min_train_samples_per_class, num_cv, merged_wordvec_model
+    )
 
     slice_results = {}
+    top_rank_k_accuracies = []
     for i, (X_train, y_train, X_test, y_test, classes) in enumerate(slices):
-        model = dnrnna_model((max_sentence_len, embed_size_word2vec), len(classes), rnn_type=rnn_type)
+        model = dnrnna_model(
+            (max_sentence_len, embed_size_word2vec), len(classes), rnn_type=rnn_type
+        )
 
         # Train the deep learning model and test using the classifier
         early_stopping = EarlyStopping(monitor="val_loss", patience=3)
@@ -181,5 +194,7 @@ def run_dbrnna_chronological_cv(dataset_name, min_train_samples_per_class, num_c
         train_result = hist.history
         train_result["test_topk_accuracies"] = accuracy
         slice_results[i + 1] = train_result
+        top_rank_k_accuracies.append(train_result[-1])
 
+    print("Top{0} accuracies for all CVs: {1}".format(rank_k, top_rank_k_accuracies))
     return slice_results

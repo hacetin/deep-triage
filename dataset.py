@@ -33,8 +33,13 @@ def filter_with_labels(sentences, labels, known_labels):
     return updated_sentences, updated_labels
 
 
-def load_data(dataset_name, min_train_samples_per_class):
-    wordvec_model = Word2Vec.load("./data/{0}/word2vec.model".format(dataset_name))
+def load_data(dataset_name, min_train_samples_per_class, merged_wordvec_model):
+    wordvec_model = None
+    if merged_wordvec_model:
+        wordvec_model = Word2Vec.load("./data/merged/word2vec.model")
+    else:
+        wordvec_model = Word2Vec.load("./data/{0}/word2vec.model".format(dataset_name))
+
     all_data = np.load(
         "./data/{0}/all_data_{1}.npy".format(dataset_name, min_train_samples_per_class),
         allow_pickle=True,
@@ -80,10 +85,12 @@ def embedding(
     return X, Y
 
 
-def chronological_cv(dataset_name, min_train_samples_per_class, num_cv):
+def chronological_cv(
+    dataset_name, min_train_samples_per_class, num_cv, merged_wordvec_model
+):
     # Load preprocessed data
     wordvec_model, sentences, labels = load_data(
-        dataset_name, min_train_samples_per_class
+        dataset_name, min_train_samples_per_class, merged_wordvec_model
     )
 
     # chronological cross validation split is performed

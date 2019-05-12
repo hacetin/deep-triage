@@ -66,7 +66,7 @@ def preprocess_dataset(dataset_name):
         all_data.append(current_data)
 
     print("Preprocessing {0} dataset: Word2Vec model".format(dataset_name))
-    # A vocabulary is constructed and the word2vec model is learnt using the preprocessed data. The word2vec model provides a semantic word representation for every word in the vocabulary.
+    # A vocabulary is constructed and the word2vec model is learned using the preprocessed data. The word2vec model provides a semantic word representation for every word in the vocabulary.
     wordvec_model = Word2Vec(
         all_data,
         min_count=min_word_frequency_word2vec,
@@ -120,3 +120,50 @@ def preprocess_all_datasets():
     preprocess_dataset("google_chromium")
     preprocess_dataset("mozilla_core")
     preprocess_dataset("mozilla_firefox")
+
+
+def read_json_and_clean(filename):
+    # The bugs are loaded from the JSON file and the preprocessing is performed
+    with open(filename) as data_file:
+        text = data_file.read()
+        # Fix json files for mozilla core and mozilla firefox
+        text = text.replace('" : NULL', '" : "NULL"')
+        data = json.loads(text, strict=False)
+
+    all_data = []
+    for item in data:
+        current_data = clean_word_list(item)
+        all_data.append(current_data)
+
+    return all_data
+
+
+def wordvec_all_datasets_merged():
+    print("Preprocessing all datasets merged: Word2Vec model")
+    # The JSON file location containing the data for deep learning model training
+    open_bugs_json_gc = "./data/{0}/deep_data.json".format("google_chromium")
+    open_bugs_json_mc = "./data/{0}/deep_data.json".format("mozilla_core")
+    open_bugs_json_mf = "./data/{0}/deep_data.json".format("mozilla_firefox")
+
+    # The bugs are loaded from the JSON file and the preprocessing is performed
+    all_data_gc = read_json_and_clean(open_bugs_json_gc)
+    all_data_mc = read_json_and_clean(open_bugs_json_mc)
+    all_data_mf = read_json_and_clean(open_bugs_json_mf)
+
+    all_data_merged = all_data_gc + all_data_mc + all_data_mf
+
+    # Word2vec parameters
+    min_word_frequency_word2vec = 5
+    embed_size_word2vec = 200
+    context_window_word2vec = 5
+
+    # A vocabulary is constructed and the word2vec model is learned using the preprocessed data. The word2vec model provides a semantic word representation for every word in the vocabulary.
+    wordvec_model = Word2Vec(
+        all_data_merged,
+        min_count=min_word_frequency_word2vec,
+        size=embed_size_word2vec,
+        window=context_window_word2vec,
+    )
+
+    # Save word2vec model to use in the model again and again
+    wordvec_model.save("./data/merged/word2vec.model")
