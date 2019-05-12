@@ -57,7 +57,7 @@ def dnrnna_model(
     attention_1 = RepeatVector(num_rnn_unit)(attention_1)
     attention_1 = Permute([2, 1])(attention_1)
     attention_1 = multiply([forwards_1, attention_1])
-    attention_1 = Lambda(lambda xin: K.sum(xin, axis=1), output_shape=(512,))(
+    attention_1 = Lambda(lambda xin: K.sum(xin, axis=1), output_shape=(num_rnn_unit,))(
         attention_1
     )
 
@@ -80,7 +80,9 @@ def dnrnna_model(
     attention_2 = RepeatVector(num_rnn_unit)(attention_2)
     attention_2 = Permute([2, 1])(attention_2)
     attention_2 = multiply([backwards_1, attention_2])
-    attention_2 = Lambda(lambda xin: K.sum(xin, axis=1))(attention_2)
+    attention_2 = Lambda(lambda xin: K.sum(xin, axis=1), output_shape=(num_rnn_unit,))(
+        attention_2
+    )
 
     last_out_2 = Lambda(lambda xin: xin[:, -1, :])(backwards_1)
     sent_representation_2 = concatenate([last_out_2, attention_2])
@@ -194,7 +196,8 @@ def run_dbrnna_chronological_cv(
         train_result = hist.history
         train_result["test_topk_accuracies"] = accuracy
         slice_results[i + 1] = train_result
-        top_rank_k_accuracies.append(train_result[-1])
-
+        top_rank_k_accuracies.append(accuracy[-1])
+    
     print("Top{0} accuracies for all CVs: {1}".format(rank_k, top_rank_k_accuracies))
+    print("Average top{0} accuracy: {1}".format(rank_k, sum(top_rank_k_accuracies)/rank_k))
     return slice_results
