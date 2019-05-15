@@ -19,3 +19,44 @@ Implementation of 'DeepTriage: Exploring the Effectiveness of Deep Learning for 
 
 ###  Contribution
 Any contribution (pull request etc.) is welcome.
+
+
+
+## Datasets
+Here are the links for the datasets:
+
+- [Google Chromium](https://drive.google.com/file/d/0Bz07ySZGa87tdENrZjAxelBPdFE/view) - 383,104 bug reports
+- [Mozilla Core](https://drive.google.com/file/d/0Bz07ySZGa87tSkVDcWoybWtuNHc/view) - 314,388 bug reports
+- [Mozilla Firefox](https://drive.google.com/file/d/0Bz07ySZGa87tXzB3cDlHWm9OQWc/view) - 162,307 bug reports
+
+
+A sample bug report from datasets is given below:
+
+
+#### Google Chromium:
+```json
+{
+		"id" : 1,
+		"issue_id" : 2,
+		"issue_title" : "Testing if chromium id works",
+		"reported_time" : "2008-08-30 16:00:21",
+		"owner" : "",
+		"description" : "\nWhat steps will reproduce the problem?\n1.\n2.\n3.\n\r\nWhat is the expected output? What do you see instead?\n\r\n\r\nPlease use labels and text to provide additional information.\n \n ",
+		"status" : "Invalid",
+		"type" : "Bug"
+}
+```
+
+#### Mozilla Core and Firefox:
+```json
+{
+		"id" : 1,
+		"issue_id" : 91,
+		"issue_title" : "document properties cannot be listed",
+		"reported_time" : "1998-04-07 23:05:23",
+		"owner" : "rickg@formerly-netscape.com.tld",
+		"description" : "Created by Till Krech (till@berlin.snafu.de) on Tuesday, April 7, 1998 9:05:23 AM PDT\nAdditional Details :\nthe JavaScript \"for in\" statement does not work on the\ndocument object. At least not in the Linux version.",
+		"status" : "VERIFIED",
+		"resolution" : "FIXED"
+}
+```
