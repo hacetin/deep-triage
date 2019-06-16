@@ -2,7 +2,7 @@
 Implementation of 'DeepTriage: Exploring the Effectiveness of Deep Learning for Bug Triaging'
 
 ### File Contents
-- `precprocess.py` includes text cleaning and tokenization parts.  
+- `preprocess.py` includes text cleaning and tokenization parts.  
 - `dataset.py` includes dataset  reading and slicing methods for chronological cross validation.
 - `dbrnna.py` is the model implementation in Keras.
 - `main.py` includes example method calls.
