@@ -10,7 +10,7 @@ Implementation of 'DeepTriage: Exploring the Effectiveness of Deep Learning for 
 ###  How to use
  1. You need a Python version of 3.6.x or later.
  2. Install required packages.
-	`pip install -U nltk gensim tensorflow keras scikit-learn`
+	`pip install -r requirements.txt`
  3. Clone the repository.
 	`git clone https://github.com/hacetin/deep-triage.git`
  4. Download datasets into the repository as following:
