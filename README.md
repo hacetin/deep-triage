@@ -9,7 +9,7 @@ Implementation of 'DeepTriage: Exploring the Effectiveness of Deep Learning for 
 
 ###  How to use
  1. You need a Python version of 3.6.x or later.
- 2. Install required packages.
+ 2. Install required packages (Using a virtual environment is recommended).
 	`pip install -r requirements.txt`
  3. Clone the repository.
 	`git clone https://github.com/hacetin/deep-triage.git`
@@ -20,7 +20,7 @@ Implementation of 'DeepTriage: Exploring the Effectiveness of Deep Learning for 
  4. Run `main.py`.
 	```python
 	cd deep-triage
-	python main.y
+	python main.py
 	```
 
 ###  Contribution
